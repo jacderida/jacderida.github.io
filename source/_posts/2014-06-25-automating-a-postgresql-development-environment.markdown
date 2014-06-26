@@ -10,7 +10,7 @@ categories:
 - postgres
 ---
 
-In this post, I'm going to describe how to use Packer and Vagrant to automate a machine running PostgreSQL. Rather than repeating it constantly, I'll state now: the resulting machine is *not* intended to be used in a production environment. It should be patently obvious it's pretty lax with respect to security. This post also isn't intended to be a general introduction to Packer and Vagrant; it assumes you're already vaguely familiar with those tools.
+In this post, I'm going to describe how to use [Packer](http://www.packer.io/) and [Vagrant](http://www.vagrantup.com/) to automate a machine running PostgreSQL. Rather than repeating it constantly, I'll state now: the resulting machine is *not* intended to be used in a production environment. It should be patently obvious it's pretty lax with respect to security. This post also isn't intended to be a general introduction to Packer and Vagrant; it assumes you're already vaguely familiar with those tools.
 
 I wanted a machine to use in a local dev environment, so I'll use Packer to produce a VirtualBox image for use with Vagrant. I chose CentOS for the host OS, although that choice was somewhat arbitrary; PostgreSQL supports most Linux based distributions, and it can also be run on Windows, or even Cygwin. Doing a VirtualBox based image with Packer involves doing an unattended CentOS installation, which is based on the Red Hat [Kickstart](https://www.centos.org/docs/5/html/Installation_Guide-en-US/pt-install-advanced-deployment.html) installation method.
 
@@ -42,7 +42,7 @@ For full reference, the entire setup is available in my [automation repository](
 ]
 
 ```
-Nothing much to point out, other than we're using the minimal install for CentOS, which comes in at a compact 400MB. Noteworthy is the configuration assuming the ISO is in the same directory as the template. You can put a full web based URL in there, or a network location (which often comes in useful in a corporate environment). Unfortunately, my internet connection tends to be pretty unreliable these days, so I'm making the assumption the ISO has been downloaded in advance (of course, an ISO wouldn't be committed to the repository).
+Nothing much to point out, other than we're using the minimal install for CentOS, which comes in at a compact 400MB. Noteworthy is the assumption the ISO is in the same directory as the template. It can be dynamically pulled in by using a full web based URL, or a network location (which often comes in useful in a corporate environment). Unfortunately, my internet connection tends to be pretty unreliable these days, so I'm making the assumption the ISO has been downloaded in advance (of course, an ISO wouldn't be committed to the repository).
 
 Here's a look at the Kickstart file, ks.cfg, located in the http directory.
 
@@ -92,7 +92,7 @@ echo "UseDNS no" >> /etc/ssh/sshd_config
 %end
 ```
 
-It's broken up into 3 sections: command, packages and post (there's also an optional pre section). The command section is pretty self explanatory: it sets the hostname, root password and regional/language based settings. In terms of the package section, since we want to keep this system as minimal as it can be, we're only going to install the core group of packages. If you were looking to install additional packages as part of the installation, you'd probably be better going with a DVD based ISO. The post section is a script that runs after the installation completes, but *before* the machine is restarted and Packer begins its own provisioning. The script:
+It's broken up into 3 sections: command, packages and post (there's also an optional pre section). The command section is pretty self explanatory: among other things, it sets the hostname, root password and regional/language based settings. In terms of the package section, since we want to keep this system as minimal as it can be, we're only going to install the core group of packages. If you were looking to install additional packages as part of the installation, you'd probably be better going with a DVD based ISO. The post section is a script that runs after the installation completes, but *before* the machine is restarted and Packer begins its own provisioning. The script:
 
 * Enables the eth0 interface, which is disabled on the minimal distro.
 * Does an update to get the latest package versions, and installs a couple of basic packages for use later.
@@ -150,3 +150,39 @@ Next, we'll take a look at the Packer based provisioners, also located in the sa
 ```
 
 It's a fairly simple setup. In all but the case of the PostgreSQL initialisation script, the shell provisioner overrides the execute command so it can run the script with sudo. Notice the postgres_init script is not a bash script. PostgreSQL won't allow you to initialise and run the database in a sudo context, and Packer doesn't allow you to override the user per script, so everything is running in the context of the vagrant user (specified by the ssh_username in the provisioner above). We have to use the "su - postgres" command to switch to the postgres user context. The problem is, su prompts for a password, and unlike sudo, you can't supply one from stdin; this makes it problematic for automation. Luckily, the testing tool [Expect](http://linux.die.net/man/1/expect) comes to the rescue here. We'll get into the details a little later, but for now, it explains why we execute an inline script to install the expect and expectk packages.
+
+I'm going to ignore some details. There's nothing interesting about adding EPEL as a repository source for yum, or authorizing the Vagrant public key, or installing the VirtualBox guest additions; all those things are standard operations for the production of a Vagrant box.
+
+Let's take a look at setting up PostgreSQL.
+
+``` bash postgres-9.3.4.sh
+
+#!/usr/bin/env bash
+
+# Note that at the moment, this script assumes a postgres user already exists!
+
+yum install -y make
+yum install -y gcc
+yum install -y readline-devel
+yum install -y zlib-devel
+curl -O http://ftp.postgresql.org/pub/source/v9.3.4/postgresql-9.3.4.tar.gz
+gunzip postgresql-9.3.4.tar.gz
+tar xvf postgresql-9.3.4.tar
+present_directory=$(pwd)
+cd postgresql-9.3.4
+./configure
+make && make install
+LD_LIBRARY_PATH=/usr/local/pgsql/lib
+export LD_LIBRARY_PATH
+cp ./contrib/start-scripts/linux /etc/init.d/postgresql
+chmod a+x /etc/init.d/postgresql
+chkconfig --add postgresql
+cd $present_directory
+mkdir /usr/local/pgsql/data
+chown postgres /usr/local/pgsql/data
+rm -f postgresql-9.3.4.tar
+rm -rf postgresql-9.3.4
+
+```
+
+Yes, it compiles it from source. [Among the alternatives](http://www.postgresql.org/download/), why bother doing it that way? Well, why not? It's quick, it's easy to vary the version you're building, and if you want to customise your build in some way, there are [tons](http://www.postgresql.org/docs/9.3/interactive/install-procedure.html) of options available for the configure stage. You also gain a bit more understanding of what's actually happening, which is one of the things I enjoy most about automating a process. There are 2 points to note. Lines 18 through 20 are what's responsible for getting the PostgreSQL service to start on boot. They supply you with a startup script you can copy to /etc/init.d/postgresql, then run chkconfig to setup the [runlevel related details](http://www.techotopia.com/index.php/Configuring_CentOS_6_Runlevels_and_Services), which will symlink the script to all the relevant places. Don't forget line 19, which marks the script as executable! I forgot, and trying to figure out why it wouldn't start cost me a lot of debugging time. The second thing to notice are lines 22 and 23. These create the data directory for the database server, and assign ownership of the directory to the postgres user. If you want to vary this directory, you'll also need to edit the provided startup script.
