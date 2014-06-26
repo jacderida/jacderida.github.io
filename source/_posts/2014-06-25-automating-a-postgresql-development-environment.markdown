@@ -10,7 +10,7 @@ categories:
 - postgres
 ---
 
-In this post, I'm going to describe how to use Packer and Vagrant to automate a machine running PostgreSQL. Rather than repeating it constantly, I'll state here at the start, that the resulting machine is *not* intended to be used in a production environment. It should be patently obvious that with respect to security, it's pretty lax. This post also isn't intended to be a general introduction to Packer and Vagrant; it assumes you're already vaguely familiar with those tools.
+In this post, I'm going to describe how to use Packer and Vagrant to automate a machine running PostgreSQL. Rather than repeating it constantly, I'll state it now: the resulting machine is *not* intended to be used in a production environment. It should be patently obvious it's pretty lax with respect to security. This post also isn't intended to be a general introduction to Packer and Vagrant; it assumes you're already vaguely familiar with those tools.
 
 I wanted a machine to use in a local dev environment, so I'll use Packer to produce a VirtualBox image for use with Vagrant. I chose CentOS for the host OS, although that choice was somewhat arbitrary; PostgreSQL supports most Linux based distributions, and it can also be run on Windows, or even Cygwin. Doing a VirtualBox based image with Packer involves doing an unattended CentOS installation, which is based on the Red Hat [Kickstart](https://www.centos.org/docs/5/html/Installation_Guide-en-US/pt-install-advanced-deployment.html) installation method.
 
@@ -42,7 +42,7 @@ For full reference, the entire setup is available in my [automation repository](
 ]
 
 ```
-Nothing much to point out, other than we're using the minimal install for CentOS, which comes in at a compact 400MB. Noteworthy is that the configuration is assuming the ISO is in the same directory as template.json. You can put a full web based URL in there, or a network location (which often comes in useful in a corporate environment). Unfortunately, my internet connection tends to be pretty unreliable these days, so I'm making the assumption that the ISO has been downloaded in advance (of course, an ISO wouldn't be committed to the repository).
+Nothing much to point out, other than we're using the minimal install for CentOS, which comes in at a compact 400MB. Noteworthy is the configuration is assuming the ISO is in the same directory as the template. You can put a full web based URL in there, or a network location (which often comes in useful in a corporate environment). Unfortunately, my internet connection tends to be pretty unreliable these days, so I'm making the assumption the ISO has been downloaded in advance (of course, an ISO wouldn't be committed to the repository).
 
 Here's a look at the Kickstart file, ks.cfg, located in the http directory.
 
@@ -92,4 +92,10 @@ echo "UseDNS no" >> /etc/ssh/sshd_config
 %end
 ```
 
-We can see there are various things customised for the UK environment, where I happen to be located. To adjust those based on your own location, you'd need to refer to the documentation to discern the valid values. In the %packages section, you get the opportunity to specify any individual packages, or groups of packages, available on the repository that comes with the particular installation. If we were doing the install with the DVD rather than the CD, the packages and groups available would be vastly larger. In this case, we'll chose the absolute bare minimum installation. Just to add as a bit of a side note, if you're using the larger DVD install, it's not immediately obvious how to establish what the valid values are for packages and groups. To do that, you pretty much need a pre-existing machine with yum on it. In terms of the groups of packages, from memory, I can't remember how to use yum to search for them.
+It's broken up into 3 sections: command, packages and post (there's also an optional pre section). The command section is pretty self explanatory: it sets the hostname, root password and regional/language based settings. In terms of the package section, since we want to keep this system as minimal as it can be, we're only going to install the core group of packages. If you were looking to install additional packages as part of the installation, you'd probably be better going with a DVD based ISO. The post section is a script that runs after the installation completes, but *before* the machine is restarted and Packer begins its own provisioning. The script:
+
+* Enables the eth0 interface, which is disabled on the minimal distro.
+* Creates the vagrant user and adds it to the sudoers list, which is standard for Vagrant. It needs to be created here because the Packer configuration uses the vagrant user to perform its provisioning via SSH.
+* Creates a postgres user for use with the database. By design, it doesn't need any root based privileges, so it isn't added to the sudoers list. In terms of automating the whole setup, lack of sudo for this user causes an interesting issue, which we'll come to later.
+* Finally, the last line is a little optimisation for SSH.
+
