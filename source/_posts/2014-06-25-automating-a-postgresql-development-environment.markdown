@@ -99,3 +99,53 @@ It's broken up into 3 sections: command, packages and post (there's also an opti
 * Creates a postgres user for use with the database. By design, it doesn't need any root based privileges, so it isn't added to the sudoers list. In terms of automating the whole setup, lack of sudo for this user causes an interesting issue, which we'll come to later.
 * Finally, the last line is a little optimisation for SSH.
 
+Next, we'll take a look at the Packer based provisioners, also located in the same template file we looked at earlier.
+
+``` json template.json
+
+"provisioners": [
+    {
+        "override": {
+            "virtualbox-iso": {
+                "execute_command": "echo 'vagrant' | {{ .Vars }} sudo -E -S sh '{{.Path}}'"
+            }
+        },
+        "script": "../../sh/setup_epel_repository-RHEL.sh",
+        "type": "shell"
+    },
+    {
+        "override": {
+            "virtualbox-iso": {
+                "execute_command": "echo 'vagrant' | {{ .Vars }} sudo -E -S sh '{{.Path}}'"
+            }
+        },
+        "inline": [ "yum install -y expect expectk" ],
+        "type": "shell"
+    },
+    {
+        "override": {
+            "virtualbox-iso": {
+                "execute_command": "echo 'vagrant' | {{ .Vars }} sudo -E -S sh '{{.Path}}'"
+            }
+        },
+        "scripts": [
+            "../../sh/authorize_vagrant_public_key.sh",
+            "../../sh/install_vbox_guest_additions-RHEL.sh",
+            "../../sh/postgres-9.3.4.sh"
+        ],
+        "type": "shell"
+    },
+    {
+        "type": "file",
+        "source": "../../sh/postgres_init.expect",
+        "destination": "/tmp/postgres_init.expect"
+    },
+    {
+        "inline": [ "expect /tmp/postgres_init.expect" ],
+        "type": "shell"
+    }
+]
+
+```
+
+It's a fairly simple setup. In all but the case of the PostgreSQL initialisation script, the shell provisioner overrides the execute command so it can run the script with sudo. Notice the postgres_init script is not a bash script. PostgreSQL won't allow you to initialise and run the database in a sudo context, and Packer doesn't allow you to override the user per script, so everything is running in the context of the vagrant user (specified by the ssh_username in the provisioner above). We have to use the "su - postgres" command to switch to the postgres user context. The problem is, su prompts for a password, and unlike sudo, you can't supply one from stdin; this makes it problematic for automation. Luckily, the testing tool [Expect](http://linux.die.net/man/1/expect) comes to the rescue here. We'll get into the details a little later, but for now, it explains why we execute an inline script to install the expect and expectk packages.
