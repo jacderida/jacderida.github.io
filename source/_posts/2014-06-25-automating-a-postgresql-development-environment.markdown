@@ -231,3 +231,18 @@ end
 ```
 
 There is one additional little step defined in the Vagrantfile, and that's to turn off the CentOS firewall.
+
+Finally, the whole thing can be brought together with a simple script.
+
+``` bash build.sh
+#!/usr/bin/env bash
+
+packer build template.json
+mv packer_virtualbox-iso_virtualbox.box postgres_9.3.4-CentOS_6.5-x86_64.box
+s3cmd put postgres_9.3.4-CentOS_6.5-x86_64.box s3://jacderida-vagrant-boxes/postgres_9.3.4-CentOS_6.5-x86_64.box
+rm -rf packer_cache
+```
+
+In order to have them accessible anywhere, I'm keeping my boxes on [S3](http://aws.amazon.com/s3/), so there's a post build step here to deploy the box there.
+
+The next step is to get this running in a Jenkins project...
