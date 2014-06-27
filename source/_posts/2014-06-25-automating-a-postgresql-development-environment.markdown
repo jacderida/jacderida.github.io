@@ -206,7 +206,13 @@ expect eof
 
 ```
 
-I have to admit, I don't really know much about Expect. Here, I've adapted a small subset of its functionality to deal with su requiring user input. You create a process, then send it input and tell it what you expect to happen as a result of that input. The points of interest here are the commands it's sending with respect to PostgreSQL. It calls the initdb binary to initialise the data directory for the database. Then, before actually starting the server, it edits the config to set it to listen on all addresses, then edits pg_hba.conf to say that it'll accept connections from anywhere. The server is then started. If you don't have anything to execute against the database as part of the process you're automating, this step isn't necessary. Finally, it logs out, returning control back to the caller.
+I have to admit, I don't really know much about Expect. Here, I've adapted a small subset of its functionality to deal with su requiring user input. You create a process, then send it input and tell it what you expect to happen as a result of that input. The points of interest here are the commands it's sending with respect to PostgreSQL:
+
+* Call the initdb binary to initialise the data directory for the database.
+* Edit postgresql.conf to set it to listen on all addresses.
+* Edit pg_hba.conf to say it'll accept connections from anywhere.
+* Start the server (if you don't have anything to execute against the database as part of the process you're automating, this step isn't necessary).
+* Finally, log out and return control back to the caller.
 
 With all this done, Packer will now create a box for use with Vagrant and VirtualBox. Since Packer is doing all the heavy lifting, the Vagrant configuration is ultra simple.
 
