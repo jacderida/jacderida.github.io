@@ -4,7 +4,7 @@
   <title><![CDATA[Eurisko]]></title>
   <link href="http://jacderida.github.io/atom.xml" rel="self"/>
   <link href="http://jacderida.github.io/"/>
-  <updated>2014-06-10T04:36:09+01:00</updated>
+  <updated>2014-06-27T16:31:31+01:00</updated>
   <id>http://jacderida.github.io/</id>
   <author>
     <name><![CDATA[Chris O'Neil]]></name>
@@ -12,5 +12,417 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Automating a PostgreSQL Development Environment With Packer and Vagrant]]></title>
+    <link href="http://jacderida.github.io/blog/2014/06/25/automating-a-postgresql-development-environment/"/>
+    <updated>2014-06-25T23:31:03+01:00</updated>
+    <id>http://jacderida.github.io/blog/2014/06/25/automating-a-postgresql-development-environment</id>
+    <content type="html"><![CDATA[<p>In this post, I&rsquo;m going to describe how to use <a href="http://www.packer.io/">Packer</a> and <a href="http://www.vagrantup.com/">Vagrant</a> to automate a machine running PostgreSQL. Rather than repeating it constantly, I&rsquo;ll state now: the resulting machine is <em>not</em> intended to be used in a production environment. It should be patently obvious it&rsquo;s pretty lax with respect to security. This post also isn&rsquo;t intended to be a general introduction to Packer and Vagrant; it assumes you&rsquo;re already vaguely familiar with those tools.</p>
+
+<p>I wanted a machine to use in a local dev environment, so I&rsquo;ll use Packer to produce a VirtualBox image for use with Vagrant. I chose CentOS for the host OS, although that choice was somewhat arbitrary; PostgreSQL supports most Linux based distributions, and it can also be run on Windows, or even Cygwin. Doing a VirtualBox based image with Packer involves doing an unattended CentOS installation, which is based on the Red Hat <a href="https://www.centos.org/docs/5/html/Installation_Guide-en-US/pt-install-advanced-deployment.html">Kickstart</a> installation method.</p>
+
+<p>For full reference, the entire setup is available in my <a href="https://github.com/jacderida/automation/tree/master/box_templates/postgres-CentOS-6.5-x86_64">automation repository</a>. To give everything a bit more context, it&rsquo;ll probably be handy to refer to that. In this post, I&rsquo;ll just go through the noteworthy parts. First, a look at the VirtualBox image definition in the packer template.</p>
+
+<figure class='code'><figcaption><span>template.json</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='json'><span class='line'><span class="s2">&quot;builders&quot;</span><span class="err">:</span> <span class="p">[</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;virtualbox-iso&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;boot_command&quot;</span><span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;&lt;tab&gt; text ks=http://:/ks.cfg&lt;enter&gt;&lt;wait&gt;&quot;</span> <span class="p">],</span>
+</span><span class='line'>        <span class="nt">&quot;boot_wait&quot;</span><span class="p">:</span> <span class="s2">&quot;10s&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;disk_size&quot;</span><span class="p">:</span> <span class="mi">10140</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;guest_os_type&quot;</span><span class="p">:</span> <span class="s2">&quot;RedHat_64&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;http_directory&quot;</span><span class="p">:</span> <span class="s2">&quot;http&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;iso_checksum&quot;</span><span class="p">:</span> <span class="s2">&quot;0d9dc37b5dd4befa1c440d2174e88a87&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;iso_checksum_type&quot;</span><span class="p">:</span> <span class="s2">&quot;md5&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;iso_url&quot;</span><span class="p">:</span> <span class="s2">&quot;CentOS-6.5-x86_64-minimal.iso&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;ssh_username&quot;</span><span class="p">:</span> <span class="s2">&quot;vagrant&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;ssh_password&quot;</span><span class="p">:</span> <span class="s2">&quot;vagrant&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;ssh_port&quot;</span><span class="p">:</span> <span class="mi">22</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;ssh_wait_timeout&quot;</span><span class="p">:</span> <span class="s2">&quot;10000s&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;shutdown_command&quot;</span><span class="p">:</span> <span class="s2">&quot;echo &#39;/sbin/halt -h -p&#39; &gt; shutdown.sh; echo &#39;vagrant&#39; | sudo -S sh &#39;shutdown.sh&#39;&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;guest_additions_path&quot;</span><span class="p">:</span> <span class="s2">&quot;/tmp/VBoxGuestAdditions_.iso&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;virtualbox_version_file&quot;</span><span class="p">:</span> <span class="s2">&quot;/tmp/.vbox_version&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;vboxmanage&quot;</span><span class="p">:</span> <span class="p">[</span>
+</span><span class='line'>            <span class="p">[</span> <span class="s2">&quot;modifyvm&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;--memory&quot;</span><span class="p">,</span> <span class="s2">&quot;512&quot;</span> <span class="p">],</span>
+</span><span class='line'>            <span class="p">[</span> <span class="s2">&quot;modifyvm&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;--cpus&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span> <span class="p">]</span>
+</span><span class='line'>        <span class="p">]</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nothing much to point out, other than we&rsquo;re using the minimal install for CentOS, which comes in at a compact 400MB. Noteworthy is the assumption the ISO is in the same directory as the template. It can be dynamically pulled in by using a full web based URL, or a network location (which often comes in useful in a corporate environment). Unfortunately, my internet connection tends to be pretty unreliable these days, so I&rsquo;m making the assumption the ISO has been downloaded in advance (of course, an ISO wouldn&rsquo;t be committed to the repository).</p>
+
+<p>Here&rsquo;s a look at the Kickstart file, ks.cfg, located in the http directory.</p>
+
+<figure class='code'><figcaption><span>ks.cfg</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>install
+</span><span class='line'>cdrom
+</span><span class='line'>lang en_GB
+</span><span class='line'>keyboard uk
+</span><span class='line'>network --bootproto<span class="o">=</span>dhcp --hostname<span class="o">=</span>postgres-CentOS-6-5-x86_64
+</span><span class='line'>rootpw vagrant
+</span><span class='line'>firewall --enabled --service<span class="o">=</span>ssh
+</span><span class='line'>authconfig --enableshadow --passalgo<span class="o">=</span>sha512
+</span><span class='line'>selinux --disabled
+</span><span class='line'>timezone --utc Europe/Dublin
+</span><span class='line'>bootloader --location<span class="o">=</span>mbr
+</span><span class='line'>text
+</span><span class='line'>skipx
+</span><span class='line'>zerombr
+</span><span class='line'>clearpart --all --initlabel
+</span><span class='line'>autopart
+</span><span class='line'>auth  --useshadow  --enablemd5
+</span><span class='line'>firstboot --disabled
+</span><span class='line'>reboot
+</span><span class='line'>
+</span><span class='line'>%packages --nobase
+</span><span class='line'>@core
+</span><span class='line'>%end
+</span><span class='line'>
+</span><span class='line'>%post
+</span><span class='line'>sed -i /etc/sysconfig/network-scripts/ifcfg-eth0 -e <span class="s2">&quot;s/^ONBOOT=no/ONBOOT=yes/g&quot;</span>
+</span><span class='line'>sed -i /etc/sysconfig/network-scripts/ifcfg-eth0 -e <span class="s2">&quot;s/^NM_CONTROLLED=yes/NM_CONTROLLED=no/g&quot;</span>
+</span><span class='line'>service network restart
+</span><span class='line'>/usr/bin/yum -y update
+</span><span class='line'>/usr/bin/yum -y install sudo
+</span><span class='line'>/usr/bin/yum -y install wget
+</span><span class='line'>/usr/sbin/groupadd vagrant
+</span><span class='line'>/usr/sbin/useradd vagrant -g vagrant -G wheel
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;vagrant&quot;</span> | passwd --stdin vagrant
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;vagrant        ALL=(ALL)       NOPASSWD: ALL&quot;</span> &gt;&gt; /etc/sudoers.d/vagrant
+</span><span class='line'>chmod 0440 /etc/sudoers.d/vagrant
+</span><span class='line'>
+</span><span class='line'>/usr/sbin/useradd postgres -G wheel
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;postgres&quot;</span> | passwd --stdin postgres
+</span><span class='line'>
+</span><span class='line'>sed -i <span class="s2">&quot;s/^.*requiretty/#Defaults requiretty/&quot;</span> /etc/sudoers
+</span><span class='line'><span class="nb">echo</span> <span class="s2">&quot;UseDNS no&quot;</span> &gt;&gt; /etc/ssh/sshd_config
+</span><span class='line'>%end
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s broken up into 3 sections: command, packages and post (there&rsquo;s also an optional pre section). The command section is pretty self explanatory: among other things, it sets the hostname, root password and regional/language based settings. In terms of the package section, since we want to keep this system as minimal as it can be, we&rsquo;re only going to install the core group of packages. If you were looking to install additional packages as part of the installation, you&rsquo;d probably be better going with a DVD based ISO. The post section is a script that runs after the installation completes, but <em>before</em> the machine is restarted and Packer begins its own provisioning. The script:</p>
+
+<ul>
+<li>Enables the eth0 interface, which is disabled on the minimal distro.</li>
+<li>Does an update to get the latest package versions, and installs a couple of basic packages for use later.</li>
+<li>Creates the vagrant user and adds it to the sudoers list, which is standard for Vagrant. It needs to be created here because the Packer configuration uses the vagrant user to perform its provisioning via SSH.</li>
+<li>Creates a postgres user for use with the database. By design, it doesn&rsquo;t need any root based privileges, so it isn&rsquo;t added to the sudoers list. In terms of automating the whole setup, lack of sudo for this user causes an interesting issue, which we&rsquo;ll come to a little later.</li>
+<li>Finally, the last line is an optimisation for SSH.</li>
+</ul>
+
+
+<p>Next, we&rsquo;ll take a look at the Packer based provisioners, also located in the same template file we looked at earlier.</p>
+
+<figure class='code'><figcaption><span>template.json</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='json'><span class='line'><span class="s2">&quot;provisioners&quot;</span><span class="err">:</span> <span class="p">[</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nt">&quot;override&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nt">&quot;virtualbox-iso&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>                <span class="nt">&quot;execute_command&quot;</span><span class="p">:</span> <span class="s2">&quot;echo &#39;vagrant&#39; |  sudo -E -S sh &#39;&#39;&quot;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">},</span>
+</span><span class='line'>        <span class="nt">&quot;script&quot;</span><span class="p">:</span> <span class="s2">&quot;../../sh/setup_epel_repository-RHEL.sh&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;shell&quot;</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nt">&quot;override&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nt">&quot;virtualbox-iso&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>                <span class="nt">&quot;execute_command&quot;</span><span class="p">:</span> <span class="s2">&quot;echo &#39;vagrant&#39; |  sudo -E -S sh &#39;&#39;&quot;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">},</span>
+</span><span class='line'>        <span class="nt">&quot;inline&quot;</span><span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;yum install -y expect expectk&quot;</span> <span class="p">],</span>
+</span><span class='line'>        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;shell&quot;</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nt">&quot;override&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>            <span class="nt">&quot;virtualbox-iso&quot;</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>                <span class="nt">&quot;execute_command&quot;</span><span class="p">:</span> <span class="s2">&quot;echo &#39;vagrant&#39; |  sudo -E -S sh &#39;&#39;&quot;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">},</span>
+</span><span class='line'>        <span class="nt">&quot;scripts&quot;</span><span class="p">:</span> <span class="p">[</span>
+</span><span class='line'>            <span class="s2">&quot;../../sh/authorize_vagrant_public_key.sh&quot;</span><span class="p">,</span>
+</span><span class='line'>            <span class="s2">&quot;../../sh/install_vbox_guest_additions-RHEL.sh&quot;</span><span class="p">,</span>
+</span><span class='line'>            <span class="s2">&quot;../../sh/postgres-9.3.4.sh&quot;</span>
+</span><span class='line'>        <span class="p">],</span>
+</span><span class='line'>        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;shell&quot;</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;source&quot;</span><span class="p">:</span> <span class="s2">&quot;../../sh/postgres_init.expect&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="nt">&quot;destination&quot;</span><span class="p">:</span> <span class="s2">&quot;/tmp/postgres_init.expect&quot;</span>
+</span><span class='line'>    <span class="p">},</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="nt">&quot;inline&quot;</span><span class="p">:</span> <span class="p">[</span> <span class="s2">&quot;expect /tmp/postgres_init.expect&quot;</span> <span class="p">],</span>
+</span><span class='line'>        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;shell&quot;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s a fairly simple setup. In all but the case of the PostgreSQL initialisation script, the shell provisioner overrides the execute command so it can run the script with sudo. Notice the postgres_init script is not a bash script. PostgreSQL won&rsquo;t allow you to initialise and run the database in a sudo context, and Packer doesn&rsquo;t allow you to override the user per script, so everything is running in the context of the vagrant user (specified by the ssh_username in the provisioner above). We have to use the &ldquo;su &ndash; postgres&rdquo; command to switch to the postgres user context. The problem is, su prompts for a password, and unlike sudo, you can&rsquo;t supply one from stdin; this makes it problematic for automation. Luckily, the testing tool <a href="http://linux.die.net/man/1/expect">Expect</a> comes to the rescue here. We&rsquo;ll get into the details a little later, but for now, it explains why we execute an inline script to install the expect and expectk packages.</p>
+
+<p>I&rsquo;m going to ignore some details. There&rsquo;s nothing interesting about adding EPEL as a repository source for yum, or authorizing the Vagrant public key, or installing the VirtualBox guest additions; all those things are standard operations for the production of a Vagrant box.</p>
+
+<p>Let&rsquo;s take a look at setting up PostgreSQL.</p>
+
+<figure class='code'><figcaption><span>postgres-9.3.4.sh</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/usr/bin/env bash</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># Note that at the moment, this script assumes a postgres user already exists!</span>
+</span><span class='line'>
+</span><span class='line'>yum install -y make
+</span><span class='line'>yum install -y gcc
+</span><span class='line'>yum install -y readline-devel
+</span><span class='line'>yum install -y zlib-devel
+</span><span class='line'>curl -O http://ftp.postgresql.org/pub/source/v9.3.4/postgresql-9.3.4.tar.gz
+</span><span class='line'>gunzip postgresql-9.3.4.tar.gz
+</span><span class='line'>tar xvf postgresql-9.3.4.tar
+</span><span class='line'><span class="nv">present_directory</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>
+</span><span class='line'><span class="nb">cd </span>postgresql-9.3.4
+</span><span class='line'>./configure
+</span><span class='line'>make <span class="o">&amp;&amp;</span> make install
+</span><span class='line'><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/pgsql/lib
+</span><span class='line'><span class="nb">export </span>LD_LIBRARY_PATH
+</span><span class='line'>cp ./contrib/start-scripts/linux /etc/init.d/postgresql
+</span><span class='line'>chmod a+x /etc/init.d/postgresql
+</span><span class='line'>chkconfig --add postgresql
+</span><span class='line'><span class="nb">cd</span> <span class="nv">$present_directory</span>
+</span><span class='line'>mkdir /usr/local/pgsql/data
+</span><span class='line'>chown postgres /usr/local/pgsql/data
+</span><span class='line'>rm -f postgresql-9.3.4.tar
+</span><span class='line'>rm -rf postgresql-9.3.4
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yes, it compiles it from source. <a href="http://www.postgresql.org/download/">Among the alternatives</a>, why bother doing it that way? Well, why not? It&rsquo;s quick, it&rsquo;s easy to vary the version you&rsquo;re building, and if you want to customise your build in some way, there are <a href="http://www.postgresql.org/docs/9.3/interactive/install-procedure.html">tons</a> of options available for the configure stage. You also gain a bit more understanding of what&rsquo;s actually happening, which is one of the things I enjoy most about automating a process. There are 2 points to note. Lines 18 through 20 are what&rsquo;s responsible for getting the PostgreSQL service to start on boot. They supply you with a startup script you can copy to /etc/init.d/postgresql, then run chkconfig to setup the <a href="http://www.techotopia.com/index.php/Configuring_CentOS_6_Runlevels_and_Services">runlevel related details</a>, which will symlink the script to all the relevant places. Don&rsquo;t forget line 19, which marks the script as executable! I forgot, and trying to figure out why it wouldn&rsquo;t start cost me a lot of debugging time. The second thing to notice are lines 22 and 23. These create the data directory for the database server, and assign ownership of the directory to the postgres user. If you want to vary this directory, you&rsquo;ll also need to edit the provided startup script.</p>
+
+<p>Now let&rsquo;s take a look at the expect script.</p>
+
+<figure class='code'><figcaption><span>postgres_init.expect</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/usr/bin/expect -f</span>
+</span><span class='line'>
+</span><span class='line'>spawn su - postgres
+</span><span class='line'>expect <span class="s2">&quot;^Password:&quot;</span>
+</span><span class='line'>send <span class="s2">&quot;postgres\r&quot;</span>
+</span><span class='line'>expect <span class="s2">&quot;$ &quot;</span>
+</span><span class='line'>send <span class="s2">&quot;/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data\r&quot;</span>
+</span><span class='line'>send <span class="s2">&quot;sed -i \&quot;s/^#listen_addresses = &#39;localhost&#39;/listen_addresses = &#39;*&#39;/g\&quot; /usr/local/pgsql/data/postgresql.conf\r&quot;</span>
+</span><span class='line'>expect <span class="s2">&quot;$ &quot;</span>
+</span><span class='line'>send <span class="s2">&quot;echo \&quot;host  all     all     all     trust\&quot; &gt;&gt; /usr/local/pgsql/data/pg_hba.conf\r&quot;</span>
+</span><span class='line'>send <span class="s2">&quot;/usr/local/pgsql/bin/pg_ctl -D /usr/local/pgsql/data -l /usr/local/pgsql/data/logfile start\r&quot;</span>
+</span><span class='line'>expect <span class="s2">&quot;server starting&quot;</span>
+</span><span class='line'>send <span class="s2">&quot;logout\r&quot;</span>
+</span><span class='line'>expect eof
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I have to admit, I don&rsquo;t really know much about Expect. Here, I&rsquo;ve adapted a small subset of its functionality to deal with su requiring user input. You create a process, then send it input and tell it what you expect to happen as a result of that input. The points of interest here are the commands it&rsquo;s sending with respect to PostgreSQL:</p>
+
+<ul>
+<li>Call the initdb binary to initialise the data directory for the database.</li>
+<li>Edit postgresql.conf to set it to listen on all addresses.</li>
+<li>Edit pg_hba.conf to say it&rsquo;ll accept connections from anywhere.</li>
+<li>Start the server (if you don&rsquo;t have anything to execute against the database as part of the process you&rsquo;re automating, this step isn&rsquo;t necessary).</li>
+<li>Finally, log out and return control back to the caller.</li>
+</ul>
+
+
+<p>With all this done, Packer will now create a box for use with Vagrant and VirtualBox. Since Packer is doing all the heavy lifting, the Vagrant configuration is ultra simple.</p>
+
+<figure class='code'><figcaption><span>Vagrantfile</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># -*- mode: ruby -*-</span>
+</span><span class='line'><span class="c1"># vi: set ft=ruby :</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Vagrantfile API/syntax version. Don&#39;t touch unless you know what you&#39;re doing!</span>
+</span><span class='line'><span class="no">VAGRANTFILE_API_VERSION</span> <span class="o">=</span> <span class="s2">&quot;2&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="no">Vagrant</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="no">VAGRANTFILE_API_VERSION</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">config</span><span class="o">|</span>
+</span><span class='line'>  <span class="n">config</span><span class="o">.</span><span class="n">vm</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="s2">&quot;https://jacderida-vagrant-boxes.s3.amazonaws.com/postgres_9.3.4-CentOS_6.5-x86_64.box&quot;</span>
+</span><span class='line'>  <span class="n">config</span><span class="o">.</span><span class="n">vm</span><span class="o">.</span><span class="n">network</span> <span class="s2">&quot;forwarded_port&quot;</span><span class="p">,</span> <span class="ss">guest</span><span class="p">:</span> <span class="mi">5432</span><span class="p">,</span> <span class="ss">host</span><span class="p">:</span> <span class="mi">7000</span>
+</span><span class='line'>  <span class="n">config</span><span class="o">.</span><span class="n">vm</span><span class="o">.</span><span class="n">provision</span> <span class="s2">&quot;shell&quot;</span><span class="p">,</span> <span class="ss">inline</span><span class="p">:</span> <span class="s2">&quot;service iptables stop&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is one additional little step defined in the Vagrantfile, and that&rsquo;s to turn off the CentOS firewall.</p>
+
+<p>Finally, the whole thing can be brought together with a simple script.</p>
+
+<figure class='code'><figcaption><span>build.sh</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/usr/bin/env bash</span>
+</span><span class='line'>
+</span><span class='line'>packer build template.json
+</span><span class='line'>mv packer_virtualbox-iso_virtualbox.box postgres_9.3.4-CentOS_6.5-x86_64.box
+</span><span class='line'>s3cmd put postgres_9.3.4-CentOS_6.5-x86_64.box s3://jacderida-vagrant-boxes/postgres_9.3.4-CentOS_6.5-x86_64.box
+</span><span class='line'>rm -rf packer_cache
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to have them accessible anywhere, I&rsquo;m keeping my boxes on <a href="http://aws.amazon.com/s3/">S3</a>, so there&rsquo;s a post build step here to deploy the box there.</p>
+
+<p>The next step is to get this running in a Jenkins project&hellip;</p>
+]]></content>
+  </entry>
   
 </feed>

@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Eurisko</title>
+  <title>Automating a PostgreSQL Development Environment With Packer and Vagrant - Eurisko</title>
   <meta name="author" content="Chris O'Neil">
 
   
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://jacderida.github.io">
+  <link rel="canonical" href="http://jacderida.github.io/blog/2014/06/25/automating-a-postgresql-development-environment">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Eurisko" type="application/atom+xml">
@@ -57,15 +57,12 @@
 </nav>
   <div id="main">
     <div id="content">
-      <div class="blog-index">
+      <div>
+<article class="hentry" role="article">
   
-  
-  
-    <article>
-      
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2014/06/25/automating-a-postgresql-development-environment/">Automating a PostgreSQL Development Environment With Packer and Vagrant</a></h1>
+      <h1 class="entry-title">Automating a PostgreSQL Development Environment With Packer and Vagrant</h1>
     
     
       <p class="meta">
@@ -88,7 +85,7 @@
   </header>
 
 
-  <div class="entry-content"><p>In this post, I&rsquo;m going to describe how to use <a href="http://www.packer.io/">Packer</a> and <a href="http://www.vagrantup.com/">Vagrant</a> to automate a machine running PostgreSQL. Rather than repeating it constantly, I&rsquo;ll state now: the resulting machine is <em>not</em> intended to be used in a production environment. It should be patently obvious it&rsquo;s pretty lax with respect to security. This post also isn&rsquo;t intended to be a general introduction to Packer and Vagrant; it assumes you&rsquo;re already vaguely familiar with those tools.</p>
+<div class="entry-content"><p>In this post, I&rsquo;m going to describe how to use <a href="http://www.packer.io/">Packer</a> and <a href="http://www.vagrantup.com/">Vagrant</a> to automate a machine running PostgreSQL. Rather than repeating it constantly, I&rsquo;ll state now: the resulting machine is <em>not</em> intended to be used in a production environment. It should be patently obvious it&rsquo;s pretty lax with respect to security. This post also isn&rsquo;t intended to be a general introduction to Packer and Vagrant; it assumes you&rsquo;re already vaguely familiar with those tools.</p>
 
 <p>I wanted a machine to use in a local dev environment, so I&rsquo;ll use Packer to produce a VirtualBox image for use with Vagrant. I chose CentOS for the host OS, although that choice was somewhat arbitrary; PostgreSQL supports most Linux based distributions, and it can also be run on Windows, or even Cygwin. Doing a VirtualBox based image with Packer involves doing an unattended CentOS installation, which is based on the Red Hat <a href="https://www.centos.org/docs/5/html/Installation_Guide-en-US/pt-install-advanced-deployment.html">Kickstart</a> installation method.</p>
 
@@ -493,19 +490,58 @@
 
 <p>The next step is to get this running in a Jenkins project&hellip;</p>
 </div>
+
+
+  <footer>
+    <p class="meta">
+      
   
+
+<span class="byline author vcard">Posted by <span class="fn">Chris O'Neil</span></span>
+
+      
+
+
+
+
+
+
+
+
   
 
 
-    </article>
+<time datetime="2014-06-25T23:31:03+01:00" pubdate data-updated="true">Jun 25<span>th</span>, 2014</time>
+      
+
+<span class="categories">
   
-  <div class="pagination">
+    <a class='category' href='/blog/categories/automation/'>automation</a>, <a class='category' href='/blog/categories/packer/'>packer</a>, <a class='category' href='/blog/categories/postgres/'>postgres</a>, <a class='category' href='/blog/categories/vagrant/'>vagrant</a>
+  
+</span>
+
+
+    </p>
     
-    <a href="/blog/archives">Blog Archives</a>
-    
-  </div>
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://jacderida.github.io/blog/2014/06/25/automating-a-postgresql-development-environment/" data-via="jacderida" data-counturl="http://jacderida.github.io/blog/2014/06/25/automating-a-postgresql-development-environment/" >Tweet</a>
+  
+  
+  
 </div>
-<aside class="sidebar">
+
+    
+    <p class="meta">
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+  <aside class="sidebar">
    
 <form action="https://www.google.com/search" method="get">
   <fieldset role="search">
@@ -529,7 +565,7 @@
 <section>
   <h1>GitHub Repos</h1>
   <ul id="gh_repos">
-    <li class="loading">Status updating&#8230;</li>
+    <li class="loading">Status updating...</li>
   </ul>
   
   <a href="https://github.com/jacderida">@jacderida</a> on GitHub
@@ -566,6 +602,7 @@
 
   
 </aside>
+
 
 
     </div>
