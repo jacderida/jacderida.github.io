@@ -156,7 +156,6 @@ I'm going to ignore some details. There's nothing interesting about adding EPEL 
 Let's take a look at setting up PostgreSQL.
 
 ``` bash postgres-9.3.4.sh
-
 #!/usr/bin/env bash
 
 # Note that at the moment, this script assumes a postgres user already exists!
@@ -182,7 +181,6 @@ mkdir /usr/local/pgsql/data
 chown postgres /usr/local/pgsql/data
 rm -f postgresql-9.3.4.tar
 rm -rf postgresql-9.3.4
-
 ```
 
 Yes, it compiles it from source. [Among the alternatives](http://www.postgresql.org/download/), why bother doing it that way? Well, why not? It's quick, it's easy to vary the version you're building, and if you want to customise your build in some way, there are [tons](http://www.postgresql.org/docs/9.3/interactive/install-procedure.html) of options available for the configure stage. You also gain a bit more understanding of what's actually happening, which is one of the things I enjoy most about automating a process. There are 2 points to note. Lines 18 through 20 are what's responsible for getting the PostgreSQL service to start on boot. They supply you with a startup script you can copy to /etc/init.d/postgresql, then run chkconfig to setup the [runlevel related details](http://www.techotopia.com/index.php/Configuring_CentOS_6_Runlevels_and_Services), which will symlink the script to all the relevant places. Don't forget line 19, which marks the script as executable! I forgot, and trying to figure out why it wouldn't start cost me a lot of debugging time. The second thing to notice are lines 22 and 23. These create the data directory for the database server, and assign ownership of the directory to the postgres user. If you want to vary this directory, you'll also need to edit the provided startup script.
@@ -209,3 +207,21 @@ expect eof
 ```
 
 I have to admit, I don't really know much about Expect. Here, I've adapted a small subset of its functionality to deal with su requiring user input. You create a process, then send it input and tell it what you expect to happen as a result of that input. The points of interest here are the commands it's sending with respect to PostgreSQL. It calls the initdb binary to initialise the data directory for the database. Then, before actually starting the server, it edits the config to set it to listen on all addresses, then edits pg_hba.conf to say that it'll accept connections from anywhere. The server is then started. If you don't have anything to execute against the database as part of the process you're automating, this step isn't necessary. Finally, it logs out, returning control back to the caller.
+
+With all this done, Packer will now create a box for use with Vagrant and VirtualBox. Since Packer is doing all the heavy lifting, the Vagrant configuration is ultra simple.
+
+``` ruby Vagrantfile
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "https://jacderida-vagrant-boxes.s3.amazonaws.com/postgres_9.3.4-CentOS_6.5-x86_64.box"
+  config.vm.network "forwarded_port", guest: 5432, host: 7000
+  config.vm.provision "shell", inline: "service iptables stop"
+end
+```
+
+There is one additional little step defined in the Vagrantfile, and that's to turn off the CentOS firewall.
